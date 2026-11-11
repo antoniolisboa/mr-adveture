@@ -2,3 +2,5 @@
 tools/godot/
 tools/home/
 tests/screens/
+build/
+__pycache__/
