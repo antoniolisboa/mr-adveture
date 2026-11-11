@@ -2,6 +2,7 @@ extends RefCounted
 
 const Powers := preload("res://scripts/powers.gd")
 const ArtNE := preload("res://scripts/art_ne.gd")   # sprites do Nordeste (PE, PB, RN, CE, MA, PI, AL, SE)
+const ArtSul := preload("res://scripts/art_sul.gd") # sprites do Sul (PR, SC, RS)
 ## Toda a pixel art do protótipo, desenhada como texto.
 ## Cada caractere é um pixel; a cor vem da PALETTE ("." = transparente).
 ## Quando houver arte de verdade (PNG), basta trocar Art.tex() por load().
@@ -1330,6 +1331,7 @@ static func tex(id: String) -> Texture2D:
 static func _build(id: String) -> Texture2D:
 	var pal: Dictionary = PALETTE.duplicate()
 	pal.merge(ArtNE.PALETTE, true)
+	pal.merge(ArtSul.PALETTE, true)
 	var rows: Array
 	if id.begins_with("player_"):
 		var parts := id.split("_")
@@ -1345,6 +1347,8 @@ static func _build(id: String) -> Texture2D:
 				"w": Color("6b4f2c"), "P": Color("5a3a22")}, true)
 	elif SPRITES.has(id):
 		rows = SPRITES[id]
+	elif ArtSul.SPRITES.has(id):
+		rows = ArtSul.SPRITES[id]
 	else:
 		rows = ArtNE.SPRITES[id]
 	return _make(rows, pal)

@@ -1,8 +1,9 @@
 # Resgate do Caramelo
 
 Protótipo de jogo de plataforma em pixel art, feito na Godot 4.7.
-Estados prontos: toda a região Sudeste (Minas Gerais com 4 fases, Rio de Janeiro com 2, Espírito Santo com 2
-e São Paulo com 3) e a Bahia (4 fases), escolhidos no mapa do Brasil.
+Estados prontos, escolhidos no mapa do Brasil: as regiões Sudeste (Minas Gerais com 4 fases, Rio de Janeiro
+com 2, Espírito Santo com 2 e São Paulo com 3), Nordeste (os 9 estados) e Sul (Paraná com 2, Santa Catarina
+com 2 e Rio Grande do Sul com 3). Faltam o Norte e o Centro-Oeste.
 
 ## Como rodar
 
@@ -203,33 +204,65 @@ Os bosses:
 
 Completar os 9 estados do Nordeste entrega a **vasilha de água** do caramelo.
 
+## O Sul
+
+Os 3 estados do Sul, cada um com item próprio, inimigos novos, música (gerada em código) e boss.
+
+| Estado | Fases | Item de poder (X) | Inimigos novos | Boss | Música |
+| --- | --- | --- | --- | --- | --- |
+| Paraná | Curitiba na Garoa, Cataratas do Iguaçu | **Pinhão**: X joga em arco e ele estoura ("POC!"), derrubando quem estiver em volta | Quati (rouba o item!), capivara (plataforma) | Quati-Rei das Cataratas | polca |
+| Santa Catarina | Praia da Joaquina, Ponte Hercílio Luz | **Prancha de surfe**: X no ar dá um segundo pulo ("aéreo") | Tainha (salta do buraco), bruxinha da Ilha da Magia | A Bruxa da Ilha | surf |
+| Rio Grande do Sul | O Pampa, Serra Gaúcha, Orla do Guaíba | **Laço**: X laça o inimigo da frente; sem inimigo, joga na diagonal e, se pegar num bloco, puxa você lá para cima | Quero-quero (rasantes), ovelha (pisar quica alto) | A Cuia Gigante | vanera |
+
+Mecânicas novas:
+
+- **Quati (Paraná):** se encostar em você com o item, em vez de machucar ele rouba o item e foge com ele
+  na cabeça. Pisar nele (ou derrubar) devolve.
+- **Capivara (Paraná):** não liga para nada. Atravessa o lago do Barigui bem devagar e você sobe nas costas
+  dela para passar. Não machuca e não morre.
+- **Ovelha (Rio Grande do Sul):** não é inimiga. Pisar na lã fofa faz "BÉÉ" e joga você bem alto (os
+  biscoitos lá em cima são para isso).
+- **Minuano (Rio Grande do Sul, fase 1):** de tempos em tempos vem a rajada de vento contra (riscos brancos
+  na tela) e empurra para trás. Constantes `WIND` e `WIND_PERIOD` na fase.
+
+Os bosses (o golpe do item só tira vida na hora em que o boss está vulnerável, como no Nordeste):
+
+- **Quati-Rei das Cataratas:** com um boné de turista de coroa. Atravessa a arena correndo duas vezes, pula
+  bem alto arremessando sacolas roubadas e senta para comer um sanduíche: hora de pisar.
+- **A Bruxa da Ilha:** voa lá no alto soltando feitiços, desce e varre a arena com a vassoura rente ao chão
+  (pule por cima) e tropeça na vassoura: tonta no chão, hora de pisar.
+- **A Cuia Gigante:** de bigode e lenço vermelho. Dá três pulos espalhando erva-mate, esguicha água quente
+  pela bomba, sai rolando de parede a parede e, quando a bomba entope ("BAH! ENTUPIU A BOMBA!"), é hora de pisar.
+
+Completar os 3 estados do Sul entrega o **cobertor velho** do caramelo.
+
 ## Objetos do caramelo e progresso salvo
 
 - Cada região completa entrega um objeto do caramelo: Norte = coleira, Nordeste = vasilha de água,
-  Centro-Oeste = bolinha, Sudeste = osso favorito, Sul = cobertor velho. O Sudeste (osso favorito) e o
-  Nordeste (vasilha de água) já podem ser completados.
+  Centro-Oeste = bolinha, Sudeste = osso favorito, Sul = cobertor velho. O Sudeste (osso favorito), o
+  Nordeste (vasilha de água) e o Sul (cobertor velho) já podem ser completados.
 - A coleção aparece no canto de baixo do mapa (apagado = ainda não achou). No painel do estado aparece
   quantos estados da região já foram concluídos.
 - Os estados concluídos e os objetos ficam salvos em `progresso.cfg`, na pasta de dados da Godot
   (rodando pelo `tools/godot.sh`: `tools/home/.local/share/godot/app_userdata/<nome do projeto>/`).
   Apagar esse arquivo zera o progresso. Os testes automáticos não mexem nele.
 - Teste da entrega do objeto: `tools/godot.sh --display-driver wayland -s res://tests/region_test.gd -- NE`
-  (sem nada = Sudeste).
+  (sem nada = Sudeste; `-- S` = Sul).
 
 ## Como editar
 
 - **Mapas das fases:** `levels/<estado>_<n>.gd` (ex.: `levels/minas_gerais_1.gd`, `levels/pernambuco_2.gd`). Cada letra é um bloco; a legenda está no topo de cada arquivo (as fases do Nordeste têm a legenda completa, com os inimigos novos e as constantes de calor, água e maré).
   Cada fase também define o nome, o tema do cenário (`serra`, `cidade`, `mina`, `estacao`, `calcadao`, `praia`,
   `pelourinho`, `baia`, `farol`, `carnaval`, `ponte`, `penha`, `marginal`, `farialima`, `terraco`; os do Nordeste
-  estão listados em `scripts/bg_ne.gd`), a pista mostrada no fim e, na última, o boss (`BOSS`) e o fim do estado
-  (`GOAL`: `casinha`, `barraca`, `abada`, `moqueca`, `cracha`; os do Nordeste em `scripts/goal_ne.gd`).
+  estão listados em `scripts/bg_ne.gd` e os do Sul em `scripts/bg_sul.gd`), a pista mostrada no fim e, na última, o boss (`BOSS`) e o fim do estado
+  (`GOAL`: `casinha`, `barraca`, `abada`, `moqueca`, `cracha`; os do Nordeste em `scripts/goal_ne.gd` e os do Sul em `scripts/goal_sul.gd`).
 - **Dados de cada estado** (fases, item, boss, música): `levels/<estado>.gd` (ex.: `levels/sergipe.gd`).
 - **Itens de poder:** `scripts/powers.gd`.
 - **Novo estado:** crie `levels/<estado>.gd` com as fases e aponte o `data` dele em `levels/states.gd`.
-- **Pixel art:** `scripts/art.gd` e `scripts/art_ne.gd` (Nordeste). Cada sprite é desenhado como texto, uma letra por pixel.
+- **Pixel art:** `scripts/art.gd`, `scripts/art_ne.gd` (Nordeste) e `scripts/art_sul.gd` (Sul). Cada sprite é desenhado como texto, uma letra por pixel.
   Depois dá para trocar por imagens PNG feitas no Aseprite.
 - **Física do pulo e velocidade:** constantes no topo de `scripts/player.gd`.
-- **Música:** as melodias (forró, samba, axé, congo, garoa, frevo, reggae, xote, coco...) são listas de notas no topo de `scripts/music.gd` (ex.: `["D5", 2]` = ré, duas semicolcheias).
+- **Música:** as melodias (forró, samba, axé, congo, garoa, frevo, reggae, xote, coco, polca, surf, vanera...) são listas de notas no topo de `scripts/music.gd` (ex.: `["D5", 2]` = ré, duas semicolcheias).
 
 ## Estrutura
 
@@ -259,7 +292,9 @@ scripts/walker.gd      base dos inimigos do Nordeste (andar, pisão, golpe, rir 
 scripts/sombrinha_mau.gd, rojao.gd, sanfona_mau.gd, buggy_mau.gd, caju.gd, piadista.gd,
   regueiro.gd, onda_calor.gd, calango.gd, ourico.gd, baiacu.gd, caranguejo.gd   inimigos do Nordeste
 scripts/ilhota.gd      ilhota da lagoa que afunda e volta (Maranhão)
-scripts/player_shot.gd piada do microfone, disco de reggae e inimigo arremessado pela pinça
+scripts/quati.gd, tainha.gd, bruxinha.gd, queroquero.gd, ovelha.gd   inimigos (e a ovelha amiga) do Sul
+scripts/capivara.gd    capivara, plataforma que anda devagar (Paraná)
+scripts/player_shot.gd piada do microfone, disco de reggae, inimigo arremessado pela pinça e pinhão
 scripts/exit_sign.gd   placa de saída das fases 1 a 3
 scripts/power_box.gd   caixa de poder
 scripts/pickup.gd      biscoito e item de poder
@@ -276,24 +311,27 @@ scripts/boss_base.gd   base dos bosses do Nordeste (vida, balão de fala, dano, 
 scripts/boss_boneco.gd, boss_quadrilha.gd, boss_bugueiro.gd, boss_resenha.gd, boss_boi.gd,
   boss_sol.gd, boss_siri.gd, boss_caranguejo.gd   bosses do Nordeste
 scripts/goal_ne.gd     fins de estado do Nordeste
+scripts/boss_quati.gd, boss_bruxa.gd, boss_cuia.gd   bosses do Sul
+scripts/goal_sul.gd    fins de estado do Sul
 scripts/enemy_shot.gd  projéteis inimigos (trens, bolinhas, biscoitos, mate, notas, moqueca, frases de coach)
 scripts/debris.gd      pedaços do boss quando ele se desmancha
 scripts/sfx.gd         efeitos sonoros (autoload "Sfx")
 scripts/music.gd       música de forró, samba, axé, congo e garoa (autoload "Music")
 scripts/background.gd  fundos com parallax (Sudeste e Bahia)
 scripts/bg_ne.gd       fundos do Nordeste
+scripts/bg_sul.gd      fundos do Sul
 scripts/hud.gd         interface
 scripts/title.gd       menu inicial
 scripts/pixel_text.gd  fonte em pixel art
-scripts/art.gd         sprites (e scripts/art_ne.gd, os do Nordeste)
+scripts/art.gd         sprites (e scripts/art_ne.gd e art_sul.gd, os do Nordeste e do Sul)
 tests/smoke_test.gd    teste automático das fases (-- PE PB para só alguns estados)
-tests/boss_test.gd     derrota cada boss do Nordeste pisando só na hora certa (mede o tempo)
-tests/powers_test.gd   testa os 8 itens do Nordeste
+tests/boss_test.gd     derrota cada boss do Nordeste e do Sul pisando só na hora certa (mede o tempo)
+tests/powers_test.gd   testa os itens do Nordeste e do Sul (e o quati, a ovelha e o minuano)
 tests/load_all.gd      carrega todos os scripts (acha erro de compilação rápido)
 tests/box_test.gd      teste das caixas de poder
 tests/region_test.gd   teste da entrega do objeto da região
 tests/screenshots.gd   fotos de cada fase de um estado
 tools/godot.sh         roda a Godot isolada (bubblewrap)
-tools/gen/             geradores (Python) dos mapas das fases: python3 tools/gen/gen_pe.py etc.
+tools/gen/             geradores (Python) dos mapas das fases: python3 tools/gen/gen_pe.py, gen_sul.py etc.
                        (check_art.py confere se os sprites têm todas as linhas do mesmo tamanho)
 ```

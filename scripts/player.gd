@@ -43,6 +43,12 @@ const SNORKEL_SWIM := 115.0
 const AIR_TIME := 7.0           # segundos de fôlego sem snorkel
 const HEAT_TIME := 16.0         # segundos de sol de meio-dia até passar mal
 const HEAT_SHADE := 4.0         # segundos de sombra para esfriar de tudo
+const AEREO_JUMP := -290.0      # prancha de surfe: segundo pulo no ar
+const SHEEP_BOUNCE := -430.0    # pisão na lã da ovelha
+const LASSO_RANGE := 112.0      # alcance do laço na diagonal
+const LASSO_GRAB := 84.0        # alcance do laço reto (laçar inimigo)
+const LASSO_PULL := 270.0
+const LASSO_COOLDOWN := 0.45
 
 var fall_limit := 1000.0
 var camera_limits := Rect2i(0, 0, 10000, 1000)
@@ -77,6 +83,15 @@ var _swim_dash := 0.0
 var _stun := 0.0                # rindo de piada: não consegue fazer nada
 var _stun_text: Node2D
 var _swing_cooldown := 0.0
+var _air_jump := false          # já usou o pulo aéreo da prancha
+var _board: Sprite2D            # prancha debaixo dos pés no pulo aéreo
+var _board_time := 0.0
+var _rope: Line2D               # corda do laço
+var _rope_tip: Sprite2D
+var _rope_target := Vector2.ZERO
+var _rope_time := 0.0
+var _pull := 0.0                # tempo que falta sendo puxado pelo laço
+var _lasso_cooldown := 0.0
 # Altura dos pés nos dois últimos quadros. A área de contato chega com um quadro
 # de atraso, então o pisão é decidido pela posição de antes do contato.
 var _feet_prev := 0.0
@@ -126,6 +141,13 @@ func _ready() -> void:
 	_umbrella = _extra_sprite("sombrinha_open", Vector2(0, -22))
 	_buggy = _extra_sprite("buggy_ride", Vector2(0, -4))
 	_held = _extra_sprite("", Vector2(0, -24))
+	_board = _extra_sprite("prancha_ride", Vector2(0, 1))
+	_rope = Line2D.new()
+	_rope.width = 1.0
+	_rope.default_color = Color("e8d8b0")
+	_rope.visible = false
+	add_child(_rope)
+	_rope_tip = _extra_sprite("laco_ponta", Vector2.ZERO)
 	_stun_text = PixelText.new()
 	_stun_text.align = 1
 	_stun_text.text = "KKKK"
@@ -200,7 +222,9 @@ func _physics_process(delta: float) -> void:
 		run = BUGGY_SPEED
 	if _in_water:
 		run = SNORKEL_SWIM if Game.power == "snorkel" else SWIM_SPEED
-	if _dash > 0.0:
+	if _pull > 0.0:
+		pass                      # o laço está puxando
+	elif _dash > 0.0:
 		velocity.x = facing * DASH_SPEED
 	elif _swim_dash > 0.0 and _in_water:
 		velocity.x = facing * 200.0
@@ -226,7 +250,7 @@ func _physics_process(delta: float) -> void:
 		max_fall = GLIDE_FALL
 	if is_on_floor():
 		_coyote = COYOTE_TIME
-	else:
+	elif _pull <= 0.0:
 		_coyote -= delta
 		velocity.y = minf(velocity.y + grav * delta, max_fall)
 
@@ -258,7 +282,17 @@ func _physics_process(delta: float) -> void:
 
 	_feet_prev2 = _feet_prev
 	_feet_prev = global_position.y
+	_update_lasso(delta)
+	# Minuano: o vento empurra (menos com o pé no chão).
+	var gust: float = level.wind_now() if level.has_method("wind_now") and _pull <= 0.0 and not frozen else 0.0
+	if is_on_floor():
+		gust *= 0.6
+	velocity.x += gust
 	move_and_slide()
+	if not is_on_wall():
+		velocity.x -= gust
+	if is_on_floor():
+		_air_jump = false
 
 	# Cabeçada em caixa de poder.
 	for i in get_slide_collision_count():
@@ -352,6 +386,13 @@ func _check_enemies() -> void:
 			Sfx.play("stomp")
 			var bounce := UMBRELLA_BOUNCE if Game.power == "sombrinha" else STOMP_BOUNCE
 			velocity.y = JUMP_VELOCITY if Input.is_action_pressed("jump") else bounce
+			if body.get("bouncy"):
+				velocity.y = SHEEP_BOUNCE      # lã fofa de ovelha
+			_air_jump = false
+		elif body.has_method("steal") and not body.has_loot() and Game.power != "" and _invuln <= 0.0:
+			body.steal(Game.power)             # o quati levou o item!
+			Game.set_power("")
+			_invuln = 1.0
 		elif body.has_method("harmless") and body.harmless():
 			continue
 		elif blocks(body.global_position) or _dash > 0.0:
@@ -386,6 +427,10 @@ func die(hop: bool) -> void:
 	_umbrella.visible = false
 	_held_tex = null
 	_held.visible = false
+	_board.visible = false
+	_rope.visible = false
+	_rope_tip.visible = false
+	_pull = 0.0
 	_stun = 0.0
 	_stun_text.visible = false
 	z_index = 20
@@ -434,6 +479,16 @@ func _attack() -> void:
 				Sfx.play("splash")
 		"pinca":
 			_pinch()
+		"pinhao":
+			_launch("pinhao", 2)
+		"prancha":
+			if not is_on_floor() and not _air_jump and not _in_water and _coyote <= 0.0:
+				_air_jump = true
+				velocity.y = AEREO_JUMP
+				_board_time = 0.4
+				Sfx.play("aereo")
+		"laco":
+			_lasso()
 
 
 ## Piada do microfone ou disco de reggae.
@@ -451,6 +506,68 @@ func _launch(kind: String, max_count: int) -> void:
 	s.position = position + Vector2(facing * 10, -9)
 	get_parent().add_child(s)
 	Sfx.play("piada" if kind == "piada" else "throw")
+
+
+## Laço: primeiro procura um inimigo reto na frente (laçou, derrubou). Se não tem,
+## joga o laço na diagonal para cima; se pegar num bloco, puxa o personagem até lá.
+func _lasso() -> void:
+	if _lasso_cooldown > 0.0 or _pull > 0.0:
+		return
+	_lasso_cooldown = LASSO_COOLDOWN
+	Sfx.play("laco")
+	var space := get_world_2d().direct_space_state
+	var hand := global_position + Vector2(facing * 4, -10)
+	# Inimigo na frente? (o mundo na frente bloqueia o laço)
+	var low := global_position + Vector2(facing * 4, -5)       # altura dos inimigos baixinhos
+	var q := PhysicsRayQueryParameters2D.create(low, low + Vector2(facing * LASSO_GRAB, 0), 1 | 4)
+	q.exclude = [get_rid()]
+	var hit := space.intersect_ray(q)
+	if not hit.is_empty() and hit["collider"].has_method("knock") and not hit["collider"].dead:
+		hit["collider"].knock()
+		_show_rope(hit["position"], 0.2)
+		return
+	var dir := Vector2(facing * 0.72, -0.7).normalized()
+	q = PhysicsRayQueryParameters2D.create(hand, hand + dir * LASSO_RANGE, 1)
+	q.exclude = [get_rid()]
+	hit = space.intersect_ray(q)
+	if hit.is_empty():
+		_show_rope(hand + dir * LASSO_RANGE, 0.2)
+		return
+	_show_rope(hit["position"], 0.6)
+	_pull = 0.6
+	velocity = (hit["position"] - hand).normalized() * LASSO_PULL
+	_coyote = 0.0
+
+
+func _show_rope(target: Vector2, time: float) -> void:
+	_rope_target = target
+	_rope_time = time
+
+
+func _update_lasso(delta: float) -> void:
+	_lasso_cooldown -= delta
+	_rope_time -= delta
+	_board_time -= delta
+	_board.visible = _board_time > 0.0 and Game.power == "prancha"
+	if Game.power != "laco":
+		_pull = 0.0
+		_rope_time = 0.0
+	if _pull > 0.0:
+		_pull -= delta
+		var hand := global_position + Vector2(facing * 4, -10)
+		var to := _rope_target - hand
+		# Chegou (ou bateu em alguma coisa): solta e dá um impulso para subir no bloco.
+		if to.length() < 12.0 or _pull <= 0.0 or is_on_ceiling() or is_on_wall():
+			_pull = 0.0
+			_rope_time = 0.0
+			velocity = Vector2(facing * 80.0, -250.0)
+		else:
+			velocity = to.normalized() * LASSO_PULL
+	_rope.visible = _rope_time > 0.0
+	_rope_tip.visible = _rope.visible
+	if _rope.visible:
+		_rope.points = PackedVector2Array([Vector2(facing * 4, -10), _rope_target - global_position])
+		_rope_tip.position = _rope_target - global_position
 
 
 ## Pinça de caranguejo: agarra o inimigo da frente; com ele na mão, X arremessa.

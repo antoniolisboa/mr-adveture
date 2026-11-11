@@ -7,6 +7,7 @@ extends Area2D
 
 const PixelText := preload("res://scripts/pixel_text.gd")
 const GoalNE := preload("res://scripts/goal_ne.gd")   # estilos do Nordeste
+const GoalSul := preload("res://scripts/goal_sul.gd") # estilos do Sul
 
 const INK := Color("2b1d2e")
 const ROOF := Color("d64545")
@@ -49,6 +50,9 @@ func _ready() -> void:
 func _draw() -> void:
 	if GoalNE.STYLES.has(style):
 		GoalNE.draw(self, style)
+		return
+	if GoalSul.STYLES.has(style):
+		GoalSul.draw(self, style)
 		return
 	if style == "barraca":
 		_draw_barraca()

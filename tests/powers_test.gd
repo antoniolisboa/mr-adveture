@@ -41,6 +41,13 @@ func _press(action: String, frames := 2) -> void:
 	Input.action_release(action)
 
 
+## Tira os inimigos da fase (para o teste não ser atrapalhado).
+func _clear_enemies(level) -> void:
+	for c in level.get_children():
+		if c.has_method("stomp") and not c.has_signal("defeated"):
+			c.queue_free()
+
+
 ## Põe um inimigo de teste do lado do jogador.
 func _enemy(level, script_path: String, offset: Vector2) -> Node:
 	var e = load(script_path).new()
@@ -174,6 +181,96 @@ func _run() -> void:
 	await _press("attack")
 	await _frames(40)
 	_check("pinça arremessa", not is_instance_valid(c2) or c2.dead)
+
+	# --- Sul ---------------------------------------------------------------
+	# Pinhão: vai em arco e estoura perto do inimigo.
+	level = await _open("PR", 0)
+	_clear_enemies(level)
+	p = level.player
+	p.global_position = Vector2(14 * 16, 12 * 16)
+	p.facing = 1
+	await _frames(5)
+	var alvo = _enemy(level, "res://scripts/caranguejo.gd", Vector2(92, 0))
+	alvo.set("speed", 0.0)
+	await _frames(2)
+	await _press("attack")
+	await _frames(70)
+	_check("pinhão estoura", not is_instance_valid(alvo) or alvo.dead)
+
+	# Quati: rouba o item em vez de machucar; pisar nele devolve.
+	game.set_power("pinhao")
+	var quati = _enemy(level, "res://scripts/quati.gd", Vector2(30, 0))
+	await _frames(40)
+	var roubou: bool = game.power == "" and is_instance_valid(quati) and quati.has_loot()
+	_check("quati rouba o item", roubou and not p.dead)
+	if is_instance_valid(quati):
+		quati.stomp()
+	_check("pisar no quati devolve", game.power == "pinhao")
+
+	# Prancha: segundo pulo no ar, só uma vez.
+	level = await _open("SC", 0)
+	_clear_enemies(level)
+	p = level.player
+	await _frames(5)
+	await _press("jump", 4)
+	await _frames(14)
+	await _press("attack")
+	var vy1: float = p.velocity.y
+	await _frames(4)
+	await _press("attack")
+	var vy2: float = p.velocity.y
+	_check("prancha dá pulo aéreo", vy1 < -230.0, "(vy %.0f)" % vy1)
+	_check("pulo aéreo só uma vez", vy2 > vy1 + 20.0, "(vy %.0f)" % vy2)
+
+	# Laço: laça o inimigo da frente.
+	level = await _open("RS", 1)
+	_clear_enemies(level)
+	p = level.player
+	p.facing = 1
+	await _frames(5)
+	var laçado = _enemy(level, "res://scripts/caranguejo.gd", Vector2(50, 0))
+	laçado.set("speed", 0.0)
+	await _frames(2)
+	await _press("attack")
+	await _frames(10)
+	_check("laço derruba inimigo", not is_instance_valid(laçado) or laçado.dead)
+
+	# Laço: pega no bloco lá no alto e puxa o personagem (fase 1, os blocos da coluna 104).
+	level = await _open("RS", 0)
+	_clear_enemies(level)
+	level.wind = 0.0
+	p = level.player
+	p.global_position = Vector2(1608, 12 * 16)
+	p.facing = 1
+	await _frames(20)
+	y0 = p.global_position.y
+	await _press("attack")
+	top = y0
+	for i in 40:
+		await _frames(1)
+		top = minf(top, p.global_position.y)
+	_check("laço puxa para o alto", top < y0 - 40.0, "(subiu %.0f)" % (y0 - top))
+
+	# Ovelha: pisar quica bem alto e ela continua lá.
+	var ovelha = _enemy(level, "res://scripts/ovelha.gd", Vector2(0, 0))
+	p.global_position += Vector2(0, -60)
+	p.velocity = Vector2.ZERO
+	var vmin := 0.0
+	for i in 50:
+		await _frames(1)
+		vmin = minf(vmin, p.velocity.y)
+	_check("ovelha quica alto", vmin < -400.0 and is_instance_valid(ovelha) and not p.dead, "(vy %.0f)" % vmin)
+
+	# Minuano: na rajada o vento empurra o personagem parado para trás.
+	level = await _open("RS", 0)
+	_clear_enemies(level)
+	p = level.player
+	p.global_position = Vector2(12 * 16, 12 * 16)
+	await _frames(10)
+	level.set("_time", level.wind_period * 0.75)
+	var wx0: float = p.global_position.x
+	await _frames(30)
+	_check("minuano empurra", p.global_position.x < wx0 - 5.0, "(andou %.0f)" % (p.global_position.x - wx0))
 
 	print("")
 	for r in _results:

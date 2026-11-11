@@ -5,6 +5,8 @@ extends Node
 ## Nordeste: Pernambuco = frevo, Paraíba = forró de São João, Rio Grande do Norte = coco,
 ## Ceará = xote, Maranhão = reggae, Piauí = baião de meio-dia, Alagoas = coco de roda,
 ## Sergipe = xote praieiro.
+## Sul: Paraná = polca (dos imigrantes de Curitiba), Santa Catarina = surf (guitarra
+## da Joaquina), Rio Grande do Sul = vanera (gaita e bombo leguero).
 ## Cada música tem duas versões: normal ("forro") e mais rápida para o boss ("forro_boss").
 
 const RATE := 22050
@@ -220,6 +222,54 @@ const SONGS := {
 		"chords": ["A", "E", "A", "D", "Bm", "A", "E", "A"],
 		"roots": {"A": 45, "E": 40, "D": 50, "Bm": 47},
 	},
+	# Polca em dó: sanfona, baixo "pum" no tempo e acorde "pá" no contratempo.
+	"polca": {
+		"style": "polca", "bpm": 118.0, "boss_bpm": 146.0,
+		"melody": [
+			["G4", 2], ["C5", 2], ["E5", 2], ["G5", 2],
+			["F5", 1], ["E5", 1], ["D5", 2], ["B4", 2], ["G4", 2],
+			["A4", 2], ["D5", 2], ["F5", 2], ["A5", 2],
+			["G5", 1], ["F5", 1], ["E5", 2], ["C5", 2], ["", 2],
+			["E5", 2], ["G5", 2], ["C6", 2], ["B5", 1], ["A5", 1],
+			["G5", 2], ["E5", 2], ["C5", 2], ["E5", 2],
+			["D5", 2], ["F5", 2], ["B4", 2], ["D5", 2],
+			["C5", 4], ["", 2], ["G4", 2],
+		],
+		"chords": ["C", "G7", "Dm", "G7", "C", "C", "G7", "C"],
+		"roots": {"C": 48, "G7": 43, "Dm": 50},
+	},
+	# Surf em mi menor: guitarra palhetada rápida, baixo e bateria galopando.
+	"surf": {
+		"style": "surf", "bpm": 120.0, "boss_bpm": 148.0,
+		"melody": [
+			["E5", 1], ["E5", 1], ["E5", 1], ["E5", 1], ["G5", 2], ["A5", 2],
+			["B5", 2], ["A5", 1], ["G5", 1], ["E5", 4],
+			["D5", 1], ["D5", 1], ["D5", 1], ["D5", 1], ["F#5", 2], ["G5", 2],
+			["A5", 2], ["G5", 1], ["F#5", 1], ["D5", 4],
+			["C5", 1], ["C5", 1], ["E5", 1], ["G5", 1], ["C6", 2], ["B5", 2],
+			["A5", 2], ["G5", 2], ["E5", 2], ["G5", 2],
+			["F#5", 2], ["A5", 2], ["B5", 2], ["D#5", 2],
+			["E5", 4], ["", 4],
+		],
+		"chords": ["Em", "D", "Em", "D", "C", "Am", "B", "Em"],
+		"roots": {"Em": 40, "D": 38, "C": 36, "Am": 45, "B": 47},
+	},
+	# Vanera em sol: gaita ponteando, bombo leguero e o "tchum" do violão no contratempo.
+	"vanera": {
+		"style": "vanera", "bpm": 112.0, "boss_bpm": 140.0,
+		"melody": [
+			["D5", 2], ["G5", 1], ["F#5", 1], ["G5", 2], ["B5", 2],
+			["A5", 1], ["G5", 1], ["F#5", 1], ["E5", 1], ["D5", 4],
+			["C5", 2], ["E5", 1], ["D5", 1], ["C5", 2], ["A4", 2],
+			["B4", 1], ["C5", 1], ["D5", 2], ["G4", 4],
+			["D5", 2], ["G5", 1], ["F#5", 1], ["G5", 2], ["B5", 2],
+			["C6", 1], ["B5", 1], ["A5", 1], ["G5", 1], ["E5", 4],
+			["D5", 2], ["C5", 1], ["B4", 1], ["A4", 2], ["F#4", 2],
+			["G4", 4], ["", 2], ["D5", 2],
+		],
+		"chords": ["G", "D7", "Am", "D7", "G", "C", "D7", "G"],
+		"roots": {"G": 43, "D7": 50, "Am": 45, "C": 48},
+	},
 }
 
 var _player: AudioStreamPlayer
@@ -278,13 +328,20 @@ func _render(song: Dictionary, bpm: float) -> AudioStreamWAV:
 	var coco := style == "coco"
 	var xote := style == "xote"
 	var reggae := style == "reggae"
+	var polca := style == "polca"
+	var surf := style == "surf"
+	var vanera := style == "vanera"
 
 	var pos := 0
 	for n in song["melody"]:
 		var len16: int = n[1]
 		if n[0] != "":
 			var f := _freq(_midi(n[0]))
-			if frevo:
+			if surf:
+				_lead(buf, _at(pos, step), len16 * step * 0.6, f)
+			elif polca or vanera:
+				_accordion(buf, _at(pos, step), len16 * step * (0.75 if polca else 0.9), f)
+			elif frevo:
 				_brass(buf, _at(pos, step), len16 * step * 0.7, f)
 			elif coco:
 				_flute(buf, _at(pos, step), len16 * step * 0.8, f)
@@ -305,7 +362,39 @@ func _render(song: Dictionary, bpm: float) -> AudioStreamWAV:
 	for bar in chords.size():
 		var root: int = roots[chords[bar]]
 		var b0 := bar * 8
-		if frevo:
+		if polca:
+			# Pum-pá: baixo no tempo (tônica e quinta), acorde no contratempo.
+			_bass(buf, _at(b0, step), step * 1.5, _freq(root - 12))
+			_bass(buf, _at(b0 + 4, step), step * 1.5, _freq(root - 5))
+			for s in [2, 6]:
+				for iv in _triad(chords[bar]):
+					_accordion(buf, _at(b0 + s, step), step * 0.8, _freq(root + 12 + iv))
+			_drum(buf, _at(b0, step), step, _freq(36), 0.35)
+			_click(buf, _at(b0 + 2, step), 0.07)
+			_click(buf, _at(b0 + 6, step), 0.07)
+		elif surf:
+			# Baixo em colcheias, bumbo no 1, caixa no 2, galope nos tons.
+			for s in [0, 2, 4, 6]:
+				_bass(buf, _at(b0 + s, step), step * 1.6, _freq(root + (12 if s == 6 else 0)))
+			_drum(buf, _at(b0, step), step, _freq(36), 0.5)
+			_shaker(buf, _at(b0 + 4, step), 0.24)
+			for s in [5, 6, 7]:
+				_drum(buf, _at(b0 + s, step), step, _freq(root + 12), 0.18)
+			for s in 8:
+				_click(buf, _at(b0 + s, step), 0.04)
+		elif vanera:
+			# Bombo leguero no 1 e no "e" do 2, violão no contratempo, chocalho.
+			_drum(buf, _at(b0, step), 2 * step, _freq(root - 12), 0.55)
+			_drum(buf, _at(b0 + 3, step), step, _freq(root), 0.3)
+			_drum(buf, _at(b0 + 4, step), 2 * step, _freq(root - 12), 0.4)
+			_bass(buf, _at(b0, step), step * 2.5, _freq(root - 12))
+			_bass(buf, _at(b0 + 4, step), step * 2.5, _freq(root - 5))
+			for s in [2, 6]:
+				for iv in _triad(chords[bar]):
+					_cavaco(buf, _at(b0 + s, step), step * 0.6, _freq(root + 12 + iv))
+			for s in 8:
+				_shaker(buf, _at(b0 + s, step), 0.06 if s % 2 == 1 else 0.03)
+		elif frevo:
 			# Baixo nos tempos, surdo no 2, caixa rufando em todas as semicolcheias.
 			_bass(buf, _at(b0, step), step * 1.6, _freq(root - 12))
 			_bass(buf, _at(b0 + 4, step), step * 1.6, _freq(root - 5))

@@ -10,6 +10,7 @@ extends Node2D
 ## e "terraco" (fim de tarde em cima dos prédios, com garoa).
 
 const BgNE := preload("res://scripts/bg_ne.gd")   # temas do Nordeste
+const BgSul := preload("res://scripts/bg_sul.gd") # temas do Sul
 
 const SKY := Color("8fd3ff")
 const SKY_LOW := Color("b8e6ff")
@@ -93,7 +94,7 @@ func _process(delta: float) -> void:
 	if cam:
 		x = floorf(cam.get_screen_center_position().x)
 	# No Carnaval a multidão e as luzes se mexem o tempo todo.
-	if x != _cam_x or theme in ["carnaval", "marginal", "terraco"] or theme in BgNE.ANIMATED:
+	if x != _cam_x or theme in ["carnaval", "marginal", "terraco"] or theme in BgNE.ANIMATED or theme in BgSul.ANIMATED:
 		_cam_x = x
 		queue_redraw()
 
@@ -136,6 +137,8 @@ func _draw() -> void:
 			_terraco(size)
 		var t when BgNE.THEMES.has(t):
 			BgNE.draw(self, t, size)
+		var t when BgSul.THEMES.has(t):
+			BgSul.draw(self, t, size)
 		_:
 			_sky(size)
 			_hills(size, 0.15, 112.0, 34.0, 0.011, 1.0, FAR, false)

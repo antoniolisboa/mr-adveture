@@ -17,6 +17,9 @@ const BOSSES := {
 	"sol": preload("res://scripts/boss_sol.gd"),
 	"siri": preload("res://scripts/boss_siri.gd"),
 	"caranguejo": preload("res://scripts/boss_caranguejo.gd"),
+	"quati": preload("res://scripts/boss_quati.gd"),
+	"bruxa": preload("res://scripts/boss_bruxa.gd"),
+	"cuia": preload("res://scripts/boss_cuia.gd"),
 }
 
 const TILE := 16

@@ -23,6 +23,7 @@ const PatineteMau := preload("res://scripts/patinete_mau.gd")
 const Coachinho := preload("res://scripts/coachinho.gd")
 const Carro := preload("res://scripts/carro.gd")
 const Ilhota := preload("res://scripts/ilhota.gd")
+const Capivara := preload("res://scripts/capivara.gd")
 
 ## Inimigos do Nordeste: caractere do mapa -> script (todos baseados em scripts/walker.gd).
 const NE_ENEMIES := {
@@ -38,6 +39,12 @@ const NE_ENEMIES := {
 	"o": preload("res://scripts/ourico.gd"),
 	"p": preload("res://scripts/baiacu.gd"),
 	"k": preload("res://scripts/caranguejo.gd"),
+	# Sul
+	"q": preload("res://scripts/quati.gd"),
+	"t": preload("res://scripts/tainha.gd"),
+	"w": preload("res://scripts/bruxinha.gd"),
+	"r": preload("res://scripts/queroquero.gd"),
+	"v": preload("res://scripts/ovelha.gd"),
 }
 
 ## Chão dos temas do Nordeste: tema -> [bloco de dentro, bloco da superfície].
@@ -60,6 +67,14 @@ const THEME_TILES := {
 	"beiramar": ["ground", "calcadao_top"],
 	"morrocareca": ["sand", "sand"],
 	"parquedopovo": ["ground", "terra_top"],
+	# Sul
+	"curitiba": ["ground", "cobble_top"],
+	"cataratas": ["tabua", "tabua_top"],
+	"joaquina": ["sand", "sand"],
+	"hercilioluz": ["concreto", "concreto_top"],
+	"pampa": ["ground", "ground_top"],
+	"serragaucha": ["ground", "cobble_top"],
+	"guaiba": ["concreto", "calcadao_top"],
 }
 
 const TILE := 16
@@ -78,6 +93,8 @@ var heat_on := false            # sol de meio-dia (Piauí): barra de calor
 var water_row := -1             # linha onde começa a água (-1 = sem água)
 var tide := 0.0                 # maré: quantos blocos a água baixa
 var tide_period := 12.0
+var wind := 0.0                 # minuano (Rio Grande do Sul): força da rajada, px/s (negativo = para a esquerda)
+var wind_period := 9.0
 var _time := 0.0
 
 
@@ -93,6 +110,8 @@ func build(data) -> void:
 	water_row = consts.get("WATER_ROW", -1)
 	tide = consts.get("TIDE", 0.0)
 	tide_period = consts.get("TIDE_PERIOD", 12.0)
+	wind = consts.get("WIND", 0.0)
+	wind_period = consts.get("WIND_PERIOD", 9.0)
 	for r in rows:
 		cols = maxi(cols, r.length())
 
@@ -111,6 +130,12 @@ func build(data) -> void:
 		water.draw.connect(_draw_water.bind(water))
 		add_child(water)
 		set_meta("water_node", water)
+	if wind != 0.0:
+		var gust := Node2D.new()
+		gust.z_index = 7
+		gust.draw.connect(_draw_wind.bind(gust))
+		add_child(gust)
+		set_meta("wind_node", gust)
 	queue_redraw()
 
 
@@ -118,6 +143,41 @@ func _process(delta: float) -> void:
 	_time += delta
 	if water_row >= 0:
 		get_meta("water_node").queue_redraw()
+	if wind != 0.0:
+		var blowing := wind_now() != 0.0
+		if blowing and not _was_blowing:
+			Sfx.play("vento")
+		_was_blowing = blowing
+		get_meta("wind_node").queue_redraw()
+
+
+var _was_blowing := false
+
+
+## Minuano agora (px/s); 0 = calmaria. A rajada dura metade do ciclo e avisa
+## antes (o vento começa fraquinho e vai apertando).
+func wind_now() -> float:
+	if wind == 0.0:
+		return 0.0
+	var c := fmod(_time, wind_period) / wind_period
+	if c < 0.5:
+		return 0.0
+	return wind * clampf((c - 0.5) * 8.0, 0.0, 1.0)
+
+
+## Riscos brancos do vento atravessando a tela.
+func _draw_wind(node: Node2D) -> void:
+	var w := wind_now()
+	if w == 0.0:
+		return
+	var cam := get_viewport().get_camera_2d()
+	var cx := cam.get_screen_center_position().x if cam else 160.0
+	var cy := cam.get_screen_center_position().y if cam else 90.0
+	var k := absf(w / wind)
+	for i in 14:
+		var y := cy - 90.0 + fposmod(i * 37.0, 180.0)
+		var x := cx - 170.0 + fposmod(i * 71.0 + _time * w * 3.0, 340.0)
+		node.draw_rect(Rect2(x, y, 10.0 + 8.0 * k, 1), Color(1, 1, 1, 0.55 * k))
 
 
 ## Altura (em pixels) da superfície da água agora; INF = fase sem água.
@@ -267,6 +327,8 @@ func _spawn_entities() -> void:
 					_spawn(Coachinho.new(), feet)
 				"A":
 					_spawn(Carro.new(), Vector2(x * TILE, y * TILE))
+				"y":
+					_spawn(Capivara.new(), Vector2(x * TILE, y * TILE))
 				"L":
 					var il := Ilhota.new()
 					il.phase = float(x % 5) * 0.7

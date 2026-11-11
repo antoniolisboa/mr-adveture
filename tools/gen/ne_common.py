@@ -44,6 +44,10 @@ LEGEND = '''## Legenda:
 ##   u  onda de calor (não dá para pisar)  c  calango (corre e para)
 ##   o  ouriço (espinhento: não pise)      p  baiacu (incha quando chega perto)
 ##   k  caranguejo (anda de lado)
+##   q  quati (rouba o item e foge; pisar devolve)
+##   y  capivara (plataforma que anda devagar; 2 blocos de largura)
+##   t  tainha (pula do fundo do buraco)    w  bruxinha (voa e solta feitiço)
+##   r  quero-quero (dá rasantes)           v  ovelha (pisar quica alto; não machuca)
 ##   E  elevador (sobe ELEVATOR_RISE blocos e desce; 2 blocos de largura)
 ##   P  início do jogador
 ##   C  cartaz de PROCURA-SE (checkpoint)
@@ -52,7 +56,9 @@ LEGEND = '''## Legenda:
 ##   G  último lugar do caramelo no estado (fim do estado)
 ##
 ## Constantes opcionais: HEAT (sol de meio-dia, barra de calor), WATER_ROW (linha onde
-## começa a água), TIDE (quantos blocos a maré baixa) e TIDE_PERIOD (segundos da maré).
+## começa a água), TIDE (quantos blocos a maré baixa), TIDE_PERIOD (segundos da maré),
+## LAGOON (lago azul no fundo dos buracos), WIND (minuano: força do vento, px/s; negativo
+## = sopra para a esquerda) e WIND_PERIOD (segundos entre uma rajada e outra).
 '''
 
 def write(fname, state, n, name, theme, clue, grid, extra=''):

@@ -70,4 +70,19 @@ const POWERS := {
 		"hud": "PINÇA - X AGARRA E ARREMESSA",
 		"colors": {"y": Color("e85a3a"), "g": Color("8a3a22")},
 	},
+	"pinhao": {
+		"item": "pinhao",
+		"hud": "PINHÃO - X JOGA E ESTOURA",
+		"colors": {"y": Color("7a3a2a"), "g": Color("2a6a3a")},
+	},
+	"prancha": {
+		"item": "prancha",
+		"hud": "PRANCHA - X NO AR: PULO AÉREO",
+		"colors": {"y": Color("5aa0e0"), "g": Color("f7d038")},
+	},
+	"laco": {
+		"item": "laco",
+		"hud": "LAÇO - X LAÇA E PUXA",
+		"colors": {"y": Color("f4f1e8"), "g": Color("a02828")},
+	},
 }

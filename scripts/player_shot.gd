@@ -4,6 +4,8 @@ extends Area2D
 ##   "disco"     disco de reggae (Maranhão): vai, volta como bumerangue e derruba tudo
 ##   "arremesso" inimigo agarrado pela pinça de caranguejo (Sergipe): cai e sai rolando
 ##               pelo chão derrubando quem estiver no caminho, até bater na parede
+##   "pinhao"    pinhão do Paraná: vai em arco e, quando bate em alguma coisa, estoura
+##               ("POC!") e derruba todo mundo em volta
 
 const Art := preload("res://scripts/art.gd")
 const PixelText := preload("res://scripts/pixel_text.gd")
@@ -53,6 +55,14 @@ func _ready() -> void:
 			_sprite.texture = Art.tex("disco_voando")
 			velocity = Vector2(dir * 190.0, 0.0)
 			_life = 2.5
+		"pinhao":
+			var c := CircleShape2D.new()
+			c.radius = 3.0
+			cs.shape = c
+			_sprite.texture = Art.tex("pinhao_voando")
+			velocity = Vector2(dir * 120.0, -230.0)
+			_gravity = 620.0
+			_life = 2.0
 		_:
 			collision_mask = 4     # o chão e a parede são vistos por raio (ele rola)
 			var c := CircleShape2D.new()
@@ -80,6 +90,10 @@ func _physics_process(delta: float) -> void:
 			velocity = velocity.move_toward(to.normalized() * 220.0, 700.0 * delta)
 			if _t > 0.6 and to.length() < 12.0:
 				queue_free()
+	elif kind == "pinhao":
+		if _popped:
+			return
+		_sprite.rotation += delta * 10.0 * dir
 	elif kind == "arremesso":
 		_sprite.rotation += delta * 12.0 * dir
 		if _roll(delta):
@@ -117,7 +131,35 @@ func _draw() -> void:
 	draw_rect(Rect2(-dir * (w / 2.0 - 3) - 1, 5, 3, 2), Color("fbe3a0"))
 
 
+var _popped := false
+
+
+## Pinhão estourando: derruba tudo num raio pequeno.
+func _pop() -> void:
+	if _popped:
+		return
+	_popped = true
+	set_deferred("monitoring", false)
+	_sprite.rotation = 0.0
+	_sprite.texture = Art.tex("pinhao_poc")
+	Sfx.play("poc")
+	var q := PhysicsShapeQueryParameters2D.new()
+	var c := CircleShape2D.new()
+	c.radius = 22.0
+	q.shape = c
+	q.transform = Transform2D(0.0, global_position)
+	q.collision_mask = 4
+	for hit in get_world_2d().direct_space_state.intersect_shape(q, 12):
+		var b = hit["collider"]
+		if b.has_method("knock") and not b.dead:
+			b.knock()
+	get_tree().create_timer(0.18).timeout.connect(queue_free)
+
+
 func _on_body_entered(body: Node) -> void:
+	if kind == "pinhao":
+		_pop()
+		return
 	if body.has_method("stomp"):
 		if body.dead or _hit.has(body):
 			return
